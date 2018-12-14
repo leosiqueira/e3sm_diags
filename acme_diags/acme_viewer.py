@@ -12,10 +12,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from bs4 import BeautifulSoup
 from cdp.cdp_viewer import OutputViewer
-import acme_diags
+from cdp.cdp_provenance import save_parameter_as_py
+from acme_diags import __version__, INSTALL_PATH
 from acme_diags.driver.utils.general import get_set_name
 from acme_diags.plot.cartopy.taylor_diagram import TaylorDiagram
 from acme_diags import container
+from acme_diags.acme_parser import ACMEParser
 
 # Dict of
 # {
@@ -37,7 +39,7 @@ LAT_LON_TABLE_INFO = collections.OrderedDict()
 
 def _copy_acme_logo(root_dir):
     """Copy over e3sm_logo.png to root_dir/viewer"""
-    src_pth = os.path.join(acme_diags.INSTALL_PATH, "e3sm_logo.png")
+    src_pth = os.path.join(INSTALL_PATH, "e3sm_logo.png")
     dst_path = os.path.join(root_dir, "viewer")
     shutil.copy(src_pth, dst_path)
 
@@ -143,7 +145,7 @@ def _extras(root_dir, parameters):
             ref_name = 'Observation and Reanalysis'
         else:
             ref_name = parameters[0].short_ref_name if parameters[0].short_ref_name else parameters[0].ref_name            
-        _add_header(f, acme_diags.__version__, test_name, ref_name, dt, path)
+        _add_header(f, __version__, test_name, ref_name, dt, path)
         h1_to_h3(f)
 
     _edit_table_html(root_dir)
@@ -228,7 +230,7 @@ def _create_csv_from_dict_taylor_diag(output_dir, season, test_name, run_type, r
     """Create a csv for a season in LAT_LON_TABLE_INFO in output_dir and return the path to it.
     Since the Taylor Diagram uses the same seasons as LAT_LON_TABLE_INFO, we can use that."""
     taylor_diag_path = os.path.join(output_dir, '{}_metrics_taylor_diag.csv'.format(season))
-    control_runs_path =  os.path.join(acme_diags.INSTALL_PATH, 'control_runs', '{}_metrics_taylor_diag_B1850_v0.csv'.format(season))
+    control_runs_path =  os.path.join(INSTALL_PATH, 'control_runs', '{}_metrics_taylor_diag_B1850_v0.csv'.format(season))
 
     col_names = ['Variables', 'Test_STD', 'Ref._STD', 'Correlation']
 
@@ -519,60 +521,16 @@ def generate_lat_lon_taylor_diag(viewer, root_dir, parameters):
 
     _create_taylor_index(viewer, root_dir, season_to_png)
 
-def create_metadata(parameter):
+def create_metadata(file_path):
     """
-    From a set of parameters, extract the metadata.
-    """
-    metadata = collections.OrderedDict()
-    msg = 'Use this command to recreate this image:'
-    metadata[msg] = ''
-    cmd = 'e3sm_diags --no_viewer '
+    Place a link of the generated Python file for this parameter.
+    When the HTMLs are created, another function goes through and replaces
+    the path with an actual link to the created Python file.
+    """    
+    msg = 'Recreate the image by running the diags with this Python file:'
+    file_name = file_path + '.py'
 
-    from acme_diags.acme_parser import ACMEParser
-    parser = ACMEParser()
-
-    args = parser.view_args()
-    supported_cmd_args = list(args.__dict__.keys())
-    
-    if 'other_parameters' in supported_cmd_args:
-        supported_cmd_args.remove('other_parameters')
-    
-    if 'parameters' in supported_cmd_args:
-        supported_cmd_args.remove('parameters')
-
-    if container.is_container():
-        container.decontainerize_parameter(parameter)
-
-    for param_name in parameter.__dict__:
-        param = parameter.__dict__[param_name]
-        # we don't want to include blank values
-        if not param:
-            continue
-
-        if param_name in supported_cmd_args:
-            if isinstance(param, list) or isinstance(param, tuple):
-                # ex: --diff_levels -7, -6, -5, -4
-                cmd += "--{} ".format(param_name)
-                for p in param:
-                    if isinstance(p, str) and p.isdigit():
-                        cmd += " {} ".format(str(p))
-                    else:
-                        cmd += " '{}' ".format(str(p))
-            
-            elif isinstance(param, bool):
-                # ex: --multiprocessing
-                # note there's no value after the parameter, it's just a flag
-                if param:  # command is True, so add --command to set it to True
-                    cmd += "--{} ".format(param_name)
-
-            elif isinstance(param, str) and param.isdigit():
-                cmd += "--{} {} ".format(param_name, param)
-            else:
-                cmd += "--{} '{}' ".format(param_name, param)
-    
-    metadata[msg] = cmd
-
-    return metadata
+    return {msg: file_name}
 
 def create_viewer(root_dir, parameters, ext):
     """Based of the parameters, find the files with
@@ -637,10 +595,10 @@ def create_viewer(root_dir, parameters, ext):
                             # each season has a image_path and metadata linked to it, thus we use a dict
                             ROW_INFO[set_num][parameter.case_id][row_name][season] = {}
                             # format fnm to support relative paths
-                            ROW_INFO[set_num][parameter.case_id][row_name][season]['image_path'] = os.path.join(
-                                '..', '{}'.format(set_num), parameter.case_id, fnm)
+                            rel_path =  os.path.join('..', '{}'.format(set_num), parameter.case_id, fnm)
+                            ROW_INFO[set_num][parameter.case_id][row_name][season]['image_path'] = rel_path
                             # If ran in a container, create_metadata() will modify *_data_path and results_dir to their original value.
-                            ROW_INFO[set_num][parameter.case_id][row_name][season]['metadata'] = create_metadata(parameter)
+                            ROW_INFO[set_num][parameter.case_id][row_name][season]['metadata'] = create_metadata(rel_path)
 
     # add all of the files in from the case_id/ folder in ANN, DJF, MAM, JJA,
     # SON order

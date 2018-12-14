@@ -93,5 +93,6 @@ def run_diag(parameter):
                      mv1_domain_mean, diff, {}, parameter)
                 utils.general.save_ncfiles(parameter.current_set,
                                    mv1_domain, mv2_domain, diff, parameter)
+                utils.general.save_parameter_as_py(parameter)
 
     return parameter

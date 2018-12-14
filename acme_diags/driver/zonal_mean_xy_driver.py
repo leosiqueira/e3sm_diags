@@ -150,6 +150,7 @@ def run_diag(parameter):
                              mv1_zonal, diff, {}, parameter)
                         utils.general.save_ncfiles(
                             parameter.current_set, mv1_zonal, mv2_zonal, diff, parameter)
+                        utils.general.save_parameter_as_py(parameter)
 
             # For variables without a z-axis.
             elif mv1.getLevel() is None and mv2.getLevel() is None:
@@ -173,6 +174,7 @@ def run_diag(parameter):
                          mv1_zonal, diff, {}, parameter)
                     utils.general.save_ncfiles(parameter.current_set,
                                        mv1_zonal, mv2_zonal, diff, parameter)
+                    utils.general.save_parameter_as_py(parameter)
 
             else:
                 raise RuntimeError(

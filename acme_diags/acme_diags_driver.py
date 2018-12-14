@@ -13,17 +13,14 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['OMP_NUM_THREADS'] = '1'
 
 import sys
-import getpass
-import datetime
 import importlib
 import traceback
-import subprocess
 import cdp.cdp_run
-import acme_diags
+from cdp.cdp_provenance import save_provenance
 from acme_diags.acme_parser import ACMEParser
 from acme_diags.acme_viewer import create_viewer
 from acme_diags.driver import utils
-from acme_diags import container
+from acme_diags import INSTALL_PATH, container
 
 
 def _get_default_diags(set_name, run_type):
@@ -35,7 +32,7 @@ def _get_default_diags(set_name, run_type):
 
     folder = '{}'.format(set_name)
     fnm = '{}_{}.cfg'.format(set_name, run_type)
-    pth = os.path.join(acme_diags.INSTALL_PATH, folder, fnm)
+    pth = os.path.join(INSTALL_PATH, folder, fnm)
 
     print('Using {} for {}.'.format(pth, set_name))
     if not os.path.exists(pth):
@@ -59,85 +56,6 @@ def _collapse_results(parameters):
             output_parameters.append(p1)
 
     return output_parameters
-
-
-def _save_env_yml(results_dir):
-    """
-    Save the yml to recreate the environment in results_dir.
-    """
-    cmd = 'conda env export'
-    p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    output, err = p.communicate()
-
-    if err:
-        print('Error when creating env yml file:')
-        print(err)
-
-    else:
-        fnm = os.path.join(results_dir, 'environment.yml')
-        with open(fnm, 'w') as f:
-            f.write(output.decode('utf-8'))
-
-        print('Saved environment yml file to: {}'.format(fnm))
-
-
-def _save_parameter_files(results_dir, parser):
-    """
-    Save the command line arguments used, and any py or cfg files.
-    """
-    cmd_used = ' '.join(sys.argv)
-    fnm = os.path.join(results_dir, 'cmd_used.txt')
-    with open(fnm, 'w') as f:
-        if container.is_container():
-            f.write('# e3sm_diags was ran in a container.\n')
-        f.write(cmd_used)
-    print('Saved command used to: {}'.format(fnm))
-
-    args = parser.view_args()
-
-    if hasattr(args, 'parameters') and args.parameters:
-        fnm = args.parameters
-        if not os.path.isfile(fnm):
-            print('File does not exist: {}'.format(fnm))
-        else:
-            with open(fnm, 'r') as f:
-                contents = ''.join(f.readlines())
-            # Remove any path, just keep the filename.
-            new_fnm = fnm.split('/')[-1]
-            new_fnm = os.path.join(results_dir, new_fnm)
-            with open(new_fnm, 'w') as f:
-                f.write(contents)
-            print('Saved py file to: {}'.format(new_fnm))
-
-    if hasattr(args, 'other_parameters') and args.other_parameters:
-        fnm = args.other_parameters[0]
-        if not os.path.isfile(fnm):
-            print('File does not exist: {}'.format(fnm))
-        else:
-            with open(fnm, 'r') as f:
-                contents = ''.join(f.readlines())
-            # Remove any path, just keep the filename.
-            new_fnm = fnm.split('/')[-1]
-            new_fnm = os.path.join(results_dir, new_fnm)
-            with open(new_fnm, 'w') as f:
-                f.write(contents)
-            print('Saved cfg file to: {}'.format(new_fnm))
-
-
-def save_provenance(results_dir, parser):
-    """
-    Store the provenance in results_dir.
-    """
-    results_dir = os.path.join(results_dir, 'prov')
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir, 0o775)
-
-    try:
-        _save_env_yml(results_dir)
-    except:
-        traceback.print_exc()
-
-    _save_parameter_files(results_dir, parser)
 
 
 def get_parameters(parser=ACMEParser()):
@@ -168,6 +86,7 @@ def get_parameters(parser=ACMEParser()):
 
     parser.check_values_of_params(parameters)
 
+    print('len(parameters)', len(parameters))
     return parameters
 
 
@@ -199,10 +118,16 @@ def main():
     parser = ACMEParser()
     parameters = get_parameters(parser)
 
+    # Save this value before running the diags.
+    # When the Python file is created for this run,
+    # this is always set to True.
+    no_viewer = parameters[0].no_viewer
+
     if not os.path.exists(parameters[0].results_dir):
-        os.makedirs(parameters[0].results_dir, 0o775)
-    if not parameters[0].no_viewer:  # Only save provenance for full runs.
-        save_provenance(parameters[0].results_dir, parser)
+        os.makedirs(parameters[0].results_dir)
+    if not no_viewer:  # Only save provenance for full runs.
+        msg = '# e3sm_diags was ran in a container.\n' if container.is_container() else ''
+        save_provenance(parameters[0].results_dir, parser, msg)
 
     if container.is_container():
         print('Running e3sm_diags in a container.')
@@ -223,7 +148,7 @@ def main():
     if not parameters:
         print('There was not a single valid diagnostics run, no viewer created.')
     else:
-        if parameters[0].no_viewer:
+        if no_viewer:
             print('Viewer not created because the no_viewer parameter is True.')
         else:
             pth = os.path.join(parameters[0].results_dir, 'viewer')

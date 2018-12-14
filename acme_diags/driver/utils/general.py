@@ -8,8 +8,10 @@ import cdutil
 import MV2
 import genutil
 import cdms2
+import cdp.cdp_provenance
 from acme_diags import container
 from acme_diags.derivations.default_regions import regions_specs
+from acme_diags.acme_parser import ACMEParser
 
 SET_NAME_MAPPING = {
     ('3', 'zonal_mean_xy'): 'zonal_mean_xy',
@@ -305,3 +307,27 @@ def get_output_dir(set_num, parameter, ignore_container=False):
                 raise
 
     return pth
+
+
+def save_parameter_as_py(param):
+    """
+    Save the Parameter object as a Python file.
+    """
+    was_container = False
+
+    if container.is_container():
+        container.decontainerize_parameter(param)
+        was_container = True
+
+    # Set this argument to True, so when diags is ran
+    # with this file, the viewer HTMLs aren't recreated again,
+    # destroying the HTMLs in the process.
+    param.no_viewer = True
+
+    parser = ACMEParser()
+    fnm = os.path.join(get_output_dir(param.current_set, param),
+          param.output_file + '.py')
+    cdp.cdp_provenance.save_parameter_as_py(param, fnm, parser)
+
+    if was_container:
+        container.containerize_parameter(param)
