@@ -74,7 +74,14 @@ def get_parameters(parser=ACMEParser()):
 
         # Load the default cfg files.
         run_type = getattr(original_parameter, 'run_type', 'model_vs_obs')
-        default_diags_paths = [_get_default_diags(set_name, run_type) for set_name in utils.general.SET_NAMES]
+        if original_parameter.no_viewer:
+            # When ran with no_viewer, it's most likely that
+            # output from the provenance is used to run this.
+            # So don't use the default cfgs to choose diags from,
+            # all parameters needed is from the file.
+            default_diags_paths = []
+        else:
+            default_diags_paths = [_get_default_diags(set_name, run_type) for set_name in utils.general.SET_NAMES]
 
         other_parameters = parser.get_other_parameters(files_to_open=default_diags_paths, argparse_vals_only=False)
 
