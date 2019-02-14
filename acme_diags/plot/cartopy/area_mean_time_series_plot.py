@@ -1,11 +1,94 @@
+import os
+import copy
 import cdms2
 import cdutil
+import acme_diags
 from acme_diags.driver import utils
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from acme_diags.derivations.default_regions import regions_specs
+
+def mask_by(input_var, maskvar, low_limit=None, high_limit=None):
+    """masks a variable var to be missing except where maskvar>=low_limit and maskvar<=high_limit.
+    None means to omit the constrint, i.e. low_limit = -infinity or high_limit = infinity.
+    var is changed and returned; we don't make a new variable.
+    var and maskvar: dimensioned the same variables.
+    low_limit and high_limit: scalars.
+    """
+    var = copy.deepcopy(input_var)
+    if low_limit is None and high_limit is None:
+        return var
+    if low_limit is None and high_limit is not None:
+        maskvarmask = maskvar > high_limit
+    elif low_limit is not None and high_limit is None:
+        maskvarmask = maskvar < low_limit
+    else:
+        maskvarmask = (maskvar < low_limit) | (maskvar > high_limit)
+    if var.mask is False:
+        newmask = maskvarmask
+    else:
+        newmask = var.mask | maskvarmask
+    var.mask = newmask
+    return var
+
+#def select_region(region, var1, var2, land_frac, ocean_frac, parameter):
+def select_region(region, var1, var2, land_frac, ocean_frac, regrid_tool, regrid_method):
+    """Select desired regions from transient variables."""
+    domain = None
+    # if region != 'global':
+    if region.find('land') != -1 or region.find('ocean') != -1:
+        land_ocean_frac = land_frac
+        region_value = 0.65
+        
+        if region.find('land') != -1:
+            var1_domain = mask_by(
+                var1, land_ocean_frac, low_limit=region_value)
+            var2_domain = var2.regrid(
+                #var1.getGrid(), regridTool=parameter.regrid_tool, regridMethod=parameter.regrid_method)
+                var1.getGrid(), regridTool=regrid_tool, regridMethod=regrid_method)
+            var2_domain = mask_by(
+                var2_domain, land_ocean_frac, low_limit=region_value)
+        elif region.find('ocean') != -1:
+            var1_domain = mask_by(
+                var1, land_ocean_frac, high_limit=region_value)
+            var2_domain = var2.regrid(
+                #var1.getGrid(), regridTool=parameter.regrid_tool, regridMethod=parameter.regrid_method)
+                var1.getGrid(), regridTool=regrid_tool, regridMethod=regrid_method)
+            var2_domain = mask_by(
+                var2_domain, land_ocean_frac, high_limit=region_value)
+#        if region.find('land') != -1:
+#            land_ocean_frac = land_frac
+#        elif region.find('ocean') != -1:
+#            land_ocean_frac = ocean_frac
+#        region_value = regions_specs[region]['value']
+#
+#        var1_domain = mask_by(
+#            var1, land_ocean_frac, low_limit=region_value)
+#        var2_domain = var2.regrid(
+#            #var1.getGrid(), regridTool=parameter.regrid_tool, regridMethod=parameter.regrid_method)
+#            var1.getGrid(), regridTool=regrid_tool, regridMethod=regrid_method)
+#        var2_domain = mask_by(
+#            var2_domain, land_ocean_frac, low_limit=region_value)
+    else:
+        var1_domain = var1
+        var2_domain = var2
+
+    try:
+        # if region.find('global') == -1:
+        domain = regions_specs[region]['domain']
+        print('Domain: ', domain)
+    except:
+        #print("No domain selector.")
+        print("No domain selector for " + region)
+
+    var1_domain_selected = var1_domain(domain)
+    var2_domain_selected = var2_domain(domain)
+    var1_domain_selected.units = var1.units
+    var2_domain_selected.units = var1.units
+
+    return var1_domain_selected, var2_domain_selected
 
 test_data_path = '/global/project/projectdirs/acme/acme_diags/test_model_data_for_acme_diags/time-series/E3SM_v1/'
 reference_data_path = '/global/project/projectdirs/acme/acme_diags/obs_for_e3sm_diags/time-series/ERA-Interim/'
@@ -35,31 +118,36 @@ mv3 = fin3('tas', time=(str(start_year)+"-01-01",str(end_year)+"-12-31"))
 cdutil.setTimeBoundsMonthly(mv1)
 cdutil.setTimeBoundsMonthly(mv2)
 cdutil.setTimeBoundsMonthly(mv3)
-
 #mv1_area_mean = cdutil.averager(mv1, axis='xy')
 #mv2_area_mean = cdutil.averager(mv2, axis='xy')
 #mv3_area_mean = cdutil.averager(mv3, axis='xy')
-
 #mv1_area_mean_year = cdutil.YEAR(mv1_area_mean)
 #mv2_area_mean_year = cdutil.YEAR(mv2_area_mean)
 #mv3_area_mean_year = cdutil.YEAR(mv3_area_mean)
+mask_path = os.path.join(acme_diags.INSTALL_PATH, 'acme_ne30_ocean_land_mask.nc')
+with cdms2.open(mask_path) as f:
+    land_frac = f('LANDFRAC')
+    ocean_frac = f('OCNFRAC')
+
+regions = ['global']  
+regrid_tool = 'esmf'
+regrid_method = 'conservative'
+regrid_method = 'linear'
+mv1_region, mv2_region = select_region(regions[0], mv1, mv2, land_frac, ocean_frac, regrid_tool, regrid_method)
 
 
-regions = ['90S50S','90S50S','50S20S','20S20N','20N50N','50N90N','20S20N','20N50N','50N90N']
+
+regions = ['global', 'land', 'ocean', '90S50S','50S20S','20S20N','20N50N','50N90N','global']
 mv_all = np.empty((3,len(regions),num_years))
 #select regions
 for index, region in enumerate(regions):
-    try:
-        # if region.find('global') == -1:
-        domain = regions_specs[region]['domain']
-        print('Domain: ', domain)
-        #print dir(domain)
-    except:
-        print("No domain selector.")
+    mv1_region, mv2_region = select_region(region, mv1, mv2, land_frac, ocean_frac, regrid_tool, regrid_method)
+    mv1_region, mv3_region = select_region(region, mv1, mv3, land_frac, ocean_frac, regrid_tool, regrid_method)
     
-    mv1_domain = cdutil.averager(mv1(domain),axis = 'xy')
-    mv2_domain = cdutil.averager(mv2(domain),axis = 'xy')
-    mv3_domain = cdutil.averager(mv3(domain),axis = 'xy')
+    mv1_domain = cdutil.averager(mv1_region,axis = 'xy')
+    mv2_domain = cdutil.averager(mv2_region,axis = 'xy')
+    mv3_domain = cdutil.averager(mv3_region,axis = 'xy')
+
     mv1_area_mean_year = cdutil.YEAR(mv1_domain)
     mv2_area_mean_year = cdutil.YEAR(mv2_domain)
     mv3_area_mean_year = cdutil.YEAR(mv3_domain)
@@ -108,14 +196,13 @@ fig = plt.figure(figsize=figsize, dpi=dpi)
     # Top panel
 for i in range(9):
     ax1 = fig.add_axes(panel[i])
-    ax1.plot(mv_all[0,i], 'k', linewidth=2,label='Model')
-    ax1.plot(mv_all[1,i], 'r', linewidth=2,label='ERA-Interim')
-    ax1.plot(mv_all[2,i], 'b', linewidth=2,label='MERRA2')
+    ax1.plot(mv_all[0,i], 'k', linewidth=2,label='Model '+'{0:.1f}'.format(np.mean(mv_all[0,i])))
+    ax1.plot(mv_all[1,i], 'r', linewidth=2,label='ERA-Interim ' + '{0:.1f}'.format(np.mean(mv_all[1,i])))
+    ax1.plot(mv_all[2,i], 'b', linewidth=2,label='MERRA2 ' + '{0:.1f}'.format(np.mean(mv_all[2,i])))
 #    ax1.plot(mv1_area_mean_year[:].asma(), 'k', linewidth=2,label='Model')
 #    ax1.plot(mv2_area_mean_year[:].asma(), 'r', linewidth=2,label='ERA-Interim')
 #    ax1.plot(mv3_area_mean_year[:].asma(), 'b', linewidth=2,label='MERRA2')
 #    ax1.set_ylim(286,289)
-    #ax1.set_xticks([-90, -60, -30, 0, 30, 60, 90])
     x = np.arange(mv1_area_mean_year[:].asma().size)
     ax1.set_xticks(x)
     x_ticks_labels = [str(x) for x in range(start_year,end_year+1)]
@@ -126,24 +213,6 @@ for i in range(9):
     ax1.legend(loc=1, prop={'size': 6})
     fig.text(panel[i][0]+0.12, panel[i][1]+panel[i][3]-0.015, regions[i],ha='center', color='black')
 
-##fig, ax = plt.subplots(1)
-##fig.autofmt_xdate()
-#fig = plt.figure()
-#print mv1_area_mean.getTime()[:],mv1_area_mean[:]
-##plt.plot(mv1_area_mean.getTime()[:], mv1_area_mean[:].asma(),mv2_area_mean.getTime()[:],mv2_area_mean[:].asma())
-#plt.plot(mv1_area_mean_year[:].asma())
-#plt.plot(mv2_area_mean_year[:].asma())
-##import pdb
-##pdb.set_trace()
-##print mv1_area_mean.getValue()
-##print mv1_area_mean[:]
-##plt.plot( mv1_area_mean[:].asma())
-##plt.plot(mv1_area_mean.getValue())
-##plt.plot(mv1_area_mean.getTime()[:])
-##plt.plot(times, range(times.size))
-#
-##xfmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
-##ax.xaxis.set_major_formatter(xfmt)
 plt.savefig('/global/project/projectdirs/acme/www/zhang40/figs/test_tas.png')
 
 #plt.show()
