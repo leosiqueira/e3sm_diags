@@ -109,7 +109,7 @@ fin3 = cdms2.open(file3)
 # select years, region and averaging
 start_year = 1980
 end_year = 2013
-#end_year = 1981
+#end_year = 1982
 num_years = end_year - start_year + 1
 mv1 = fin1('TREFHT', time=(str(start_year)+"-01-01",str(end_year)+"-12-31"))
 mv2 = fin2('tas', time=(str(start_year)+"-01-01",str(end_year)+"-12-31"))
@@ -137,7 +137,8 @@ mv1_region, mv2_region = select_region(regions[0], mv1, mv2, land_frac, ocean_fr
 
 
 
-regions = ['global', 'land', 'ocean', '90S50S','50S20S','20S20N','20N50N','50N90N','global']
+#regions = ['global', 'land', 'ocean', '90S50S','50S20S','20S20N','20N50N','50N90N','global']
+regions = ['global']#, 'land', 'ocean', '90S50S','50S20S','20S20N','20N50N','50N90N','global']
 mv_all = np.empty((3,len(regions),num_years))
 #select regions
 for index, region in enumerate(regions):
@@ -194,7 +195,7 @@ fig = plt.figure(figsize=figsize, dpi=dpi)
 #fig = plt.figure(figsize=parameter.figsize, dpi=parameter.dpi)
 
     # Top panel
-for i in range(9):
+for i in range(len(regions)):
     ax1 = fig.add_axes(panel[i])
     ax1.plot(mv_all[0,i], 'k', linewidth=2,label='Model '+'{0:.1f}'.format(np.mean(mv_all[0,i])))
     ax1.plot(mv_all[1,i], 'r', linewidth=2,label='ERA-Interim ' + '{0:.1f}'.format(np.mean(mv_all[1,i])))
@@ -206,7 +207,12 @@ for i in range(9):
     x = np.arange(mv1_area_mean_year[:].asma().size)
     ax1.set_xticks(x)
     x_ticks_labels = [str(x) for x in range(start_year,end_year+1)]
-    ax1.set_xticklabels(x_ticks_labels, rotation='vertical', fontsize=8)
+    ax1.set_xticklabels(x_ticks_labels, rotation='45', fontsize=8)
+#    plt.locator_params(axis='x', nbins=10)
+#    x = ax1.get_xticks()
+#    x_ticks_labels = [str(int(x+start_year)) for x in x]
+#    ax1.set_xticklabels(x_ticks_labels, rotation='vertical', fontsize=8)
+    
     
     if i % 3 == 0 :
         ax1.set_ylabel('Surface air temperature (K)')
