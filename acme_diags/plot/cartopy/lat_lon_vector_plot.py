@@ -17,6 +17,8 @@ from acme_diags.plot import get_colormap
 #file1 = test_data_path + '20161118.beta0.FC5COSP.ne30_ne30.edison_ANN_climo.nc'
 test_data_path = '/export/zhang40/test_data/'
 file1 = test_data_path + '20170926.FCT2.A_WCYCL1850S.ne30_oECv3.anvil_ANN_000101_003012_climo.nc'
+test_data_path = '/Users/zhang40/Documents/ACME_simulations/'
+file1 = test_data_path + '20160520.A_WCYCL1850.ne30_oEC.edison.alpha6_01_ANN_climo.nc' 
 #reference_data_path = '/p/cscratch/acme/data/obs_for_e3sm_diags/climatology/ERA-Interim/'
 #file2 = reference_data_path + 'ERA-Interim_ANN_197901_201612_climo.nc' 
 
@@ -25,6 +27,7 @@ fin1 = cdms2.open(file1)
 #fin2 = cdms2.open(file2)
 
 x1 = fin1('TAUX')
+y1 = fin1('TAUY')
 print x1.shape
 #y1 = fin1('TAUY')
 #
@@ -33,10 +36,10 @@ print x1.shape
 
 
 #var = add_cyclic(var)
-var = x1
-lon = var.getLongitude()
-lat = var.getLatitude()
-var = ma.squeeze(var.asma())
+lon = x1.getLongitude()
+lat = y1.getLatitude()
+u = ma.squeeze(x1.asma())
+v = ma.squeeze(y1.asma())
 
 proj = ccrs.PlateCarree(central_longitude=180)
 
@@ -51,12 +54,17 @@ panel = [(0.1691, 0.6810, 0.6465, 0.2258),
 levels = None
 norm = None
 
+
+#figsize = [8.5, 11.0]
+figsize = [17, 22.0]
+dpi = 150
+fig = plt.figure(figsize=figsize, dpi=dpi)
+
 # Contour plot
-fig = plt.figure()
 ax = fig.add_axes(panel[0], projection=proj)
 ax.set_global()
 #cmap = get_colormap(cmap, parameters)
-p1 = ax.contourf(lon, lat, var,
+p1 = ax.contourf(lon, lat, u,
                  transform=ccrs.PlateCarree(),
                  norm=norm,
                  levels=levels,
@@ -64,6 +72,17 @@ p1 = ax.contourf(lon, lat, var,
                  extend='both',
                  )
 
+x  , y = np.meshgrid(lon,lat)
+u = ma.squeeze(x1.asma())
+v = ma.squeeze(y1.asma())
+print x.shape
+print y.shape
+print u.shape
+print v.shape
+skip=(slice(None,None,4),slice(None,None,4))
+
+#ax.quiver(x,y,u,v)
+ax.quiver(x[skip],y[skip],u[skip],v[skip])#,color='black', headwidth=1, scale = 10, headlength=2)
 ax.set_aspect('auto')
 ax.coastlines(lw=0.3)
 plt.savefig('test_vector.png')
