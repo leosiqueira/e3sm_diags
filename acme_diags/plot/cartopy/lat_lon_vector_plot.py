@@ -37,7 +37,7 @@ print x1.shape
 
 #var = add_cyclic(var)
 lon = x1.getLongitude()
-lat = y1.getLatitude()
+lat = x1.getLatitude()
 u = ma.squeeze(x1.asma())
 v = ma.squeeze(y1.asma())
 
@@ -79,7 +79,7 @@ print x.shape
 print y.shape
 print u.shape
 print v.shape
-skip=(slice(None,None,4),slice(None,None,4))
+skip=(slice(None,None,None),slice(None,None,None))
 
 #ax.quiver(x,y,u,v)
 ax.quiver(x[skip],y[skip],u[skip],v[skip])#,color='black', headwidth=1, scale = 10, headlength=2)
