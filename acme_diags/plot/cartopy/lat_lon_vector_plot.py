@@ -38,8 +38,15 @@ print x1.shape
 #var = add_cyclic(var)
 lon = x1.getLongitude()
 lat = x1.getLatitude()
-u = ma.squeeze(x1.asma())
-v = ma.squeeze(y1.asma())
+#convert surface stress to wind stress
+u = -ma.squeeze(x1.asma())
+v = -ma.squeeze(y1.asma())
+wind = (u**2+v**2)**0.5
+u_norm = u/wind
+v_norm = v/wind
+print u[0,0], v[0,0],wind[0,0]
+
+
 
 proj = ccrs.PlateCarree(central_longitude=180)
 
@@ -64,7 +71,7 @@ fig = plt.figure(figsize=figsize, dpi=dpi)
 ax = fig.add_axes(panel[0], projection=proj)
 ax.set_global()
 #cmap = get_colormap(cmap, parameters)
-p1 = ax.contourf(lon, lat, u,
+p1 = ax.contourf(lon, lat, wind,
                  transform=ccrs.PlateCarree(),
                  norm=norm,
                  levels=levels,
@@ -73,16 +80,14 @@ p1 = ax.contourf(lon, lat, u,
                  )
 
 x  , y = np.meshgrid(lon,lat)
-u = ma.squeeze(x1.asma())
-v = ma.squeeze(y1.asma())
 print x.shape
 print y.shape
 print u.shape
 print v.shape
-skip=(slice(None,None,None),slice(None,None,None))
+skip=(slice(None,None,6),slice(None,None,6))
 
 #ax.quiver(x,y,u,v)
-ax.quiver(x[skip],y[skip],u[skip],v[skip])#,color='black', headwidth=1, scale = 10, headlength=2)
+ax.quiver(x[skip],y[skip],u_norm[skip],v_norm[skip],scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
 ax.set_aspect('auto')
 ax.coastlines(lw=0.3)
 plt.savefig('test_vector.png')
