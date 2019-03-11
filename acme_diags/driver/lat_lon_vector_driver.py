@@ -9,6 +9,9 @@ from acme_diags.plot import plot
 from acme_diags.derivations import acme
 from acme_diags.metrics import rmse, corr, min_cdms, max_cdms, mean, std
 from acme_diags.driver import utils
+import collections
+
+Results_Container = collections.namedtuple('Results_Container', ['refs', 'tests', 'metrics'])
 
 
 def create_metrics(ref, test, ref_regrid, test_regrid, diff):
@@ -72,6 +75,8 @@ def run_diag(parameter):
                 land_frac = f('LANDFRAC')
                 ocean_frac = f('OCNFRAC')
 
+        tests = []
+        refs = []
         for var in variables:
             print('Variable: {}'.format(var))
             parameter.var_id = var
@@ -111,27 +116,30 @@ def run_diag(parameter):
                         mv1_reg, mv2_reg = utils.general.regrid_to_lower_res(
                             mv1_domain, mv2_domain, parameter.regrid_tool, parameter.regrid_method)
 
-                        diff = mv1_reg - mv2_reg
-                        metrics_dict = create_metrics(
-                            mv2_domain, mv1_domain, mv2_reg, mv1_reg, diff)
+                        tests.append(mv1_reg)
+                        refs.append(mv2_reg)
 
-                        # Saving the metrics as a json.
-                        metrics_dict['unit'] = mv1_reg.units
-                        fnm = os.path.join(utils.general.get_output_dir(
-                            parameter.current_set, parameter), parameter.output_file + '.json')
-                        with open(fnm, 'w') as outfile:
-                             json.dump(metrics_dict, outfile)
-                        # Get the filename that the user has passed in and display that.
-                        # When running in a container, the paths are modified.
-                        fnm = os.path.join(utils.general.get_output_dir(parameter.current_set,
-                            parameter, ignore_container=True), parameter.output_file + '.json')
-                        print('Metrics saved in: ' + fnm)
+                        #diff = mv1_reg - mv2_reg
+                        #metrics_dict = create_metrics(
+                        #    mv2_domain, mv1_domain, mv2_reg, mv1_reg, diff)
 
-                        parameter.var_region = region
-                        plot(parameter.current_set, mv2_domain,
-                             mv1_domain, diff, metrics_dict, parameter)
-                        utils.general.save_ncfiles(
-                            parameter.current_set, mv1_domain, mv2_domain, diff, parameter)
+                        ## Saving the metrics as a json.
+                        #metrics_dict['unit'] = mv1_reg.units
+                        #fnm = os.path.join(utils.general.get_output_dir(
+                        #    parameter.current_set, parameter), parameter.output_file + '.json')
+                        #with open(fnm, 'w') as outfile:
+                        #     json.dump(metrics_dict, outfile)
+                        ## Get the filename that the user has passed in and display that.
+                        ## When running in a container, the paths are modified.
+                        #fnm = os.path.join(utils.general.get_output_dir(parameter.current_set,
+                        #    parameter, ignore_container=True), parameter.output_file + '.json')
+                        #print('Metrics saved in: ' + fnm)
+
+                        #parameter.var_region = region
+                        #plot(parameter.current_set, mv2_domain,
+                        #     mv1_domain, diff, metrics_dict, parameter)
+                        #utils.general.save_ncfiles(
+                        #    parameter.current_set, mv1_domain, mv2_domain, diff, parameter)
 
 
             # For variables without a z-axis.
@@ -151,34 +159,36 @@ def run_diag(parameter):
                     mv1_reg, mv2_reg = utils.general.regrid_to_lower_res(
                         mv1_domain, mv2_domain, parameter.regrid_tool, parameter.regrid_method)
 
-                        land_mask = MV2.logical_or(mv1_reg.mask, mv2_reg.mask)
-                        mv1_reg = MV2.masked_where(land_mask, mv1_reg)
-                        mv2_reg = MV2.masked_where(land_mask, mv2_reg)
+                    tests.append(mv1_reg)
+                    refs.append(mv2_reg)
+                   
 
-                    diff = mv1_reg - mv2_reg
-                    metrics_dict = create_metrics(
-                        mv2_domain, mv1_domain, mv2_reg, mv1_reg, diff)
+                    #diff = mv1_reg - mv2_reg
+                    #metrics_dict = create_metrics(
+                    #    mv2_domain, mv1_domain, mv2_reg, mv1_reg, diff)
 
-                    # Saving the metrics as a json.
-                    metrics_dict['unit'] = mv1_reg.units
-                    fnm = os.path.join(utils.general.get_output_dir(
-                        parameter.current_set, parameter), parameter.output_file + '.json')
-                    with open(fnm, 'w') as outfile:
-                            json.dump(metrics_dict, outfile)
-                    # Get the filename that the user has passed in and display that.
-                    # When running in a container, the paths are modified.
-                    fnm = os.path.join(utils.general.get_output_dir(parameter.current_set,
-                        parameter, ignore_container=True), parameter.output_file + '.json')
-                    print('Metrics saved in: ' + fnm)
+                    ## Saving the metrics as a json.
+                    #metrics_dict['unit'] = mv1_reg.units
+                    #fnm = os.path.join(utils.general.get_output_dir(
+                    #    parameter.current_set, parameter), parameter.output_file + '.json')
+                    #with open(fnm, 'w') as outfile:
+                    #        json.dump(metrics_dict, outfile)
+                    ## Get the filename that the user has passed in and display that.
+                    ## When running in a container, the paths are modified.
+                    #fnm = os.path.join(utils.general.get_output_dir(parameter.current_set,
+                    #    parameter, ignore_container=True), parameter.output_file + '.json')
+                    #print('Metrics saved in: ' + fnm)
 
-                    parameter.var_region = region
-                    plot(parameter.current_set, mv2_domain,
-                         mv1_domain, diff, metrics_dict, parameter)
-                    utils.general.save_ncfiles(parameter.current_set,
-                                       mv1_domain, mv2_domain, diff, parameter)
+                    #parameter.var_region = region
+                    #plot(parameter.current_set, mv2_domain,
+                    #     mv1_domain, diff, metrics_dict, parameter)
+                    #utils.general.save_ncfiles(parameter.current_set,
+                    #                  mv1_domain, mv2_domain, diff, parameter)
 
             else:
                 raise RuntimeError(
                     "Dimensions of the two variables are different. Aborting.")
+
+        result = Results_Container(tests=tests, refs=refs, metrics = None)
 
     return parameter

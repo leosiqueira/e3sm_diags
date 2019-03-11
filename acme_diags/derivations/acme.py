@@ -768,6 +768,12 @@ derived_variables = {
         (('TAUX','TAUY'), lambda taux, tauy: tauxy(taux, tauy)),
         (('tauu','tauv'), lambda taux, tauy: tauxy(taux, tauy))
     ]),
+    'TAUX': OrderedDict([
+        (('tauu',), lambda tauu: -tauu)
+    ]),
+    'TAUY': OrderedDict([
+        (('tauv',), lambda tauv: -tauv)
+    ]),
     'AODVIS': OrderedDict([
         (('AODVIS',), lambda aod: convert_units(rename(aod), target_units = "dimensionless")),
         (('AOD_550_ann',), lambda aod: convert_units(rename(aod), target_units = "dimensionless"))

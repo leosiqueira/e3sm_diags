@@ -28,7 +28,6 @@ fin1 = cdms2.open(file1)
 
 x1 = fin1('TAUX')
 y1 = fin1('TAUY')
-print x1.shape
 #y1 = fin1('TAUY')
 #
 #x2 = fin2('tauu')
@@ -44,7 +43,8 @@ v = -ma.squeeze(y1.asma())
 wind = (u**2+v**2)**0.5
 u_norm = u/wind
 v_norm = v/wind
-print u[0,0], v[0,0],wind[0,0]
+x  , y = np.meshgrid(lon,lat)
+skip=(slice(None,None,6),slice(None,None,6))
 
 
 
@@ -59,6 +59,7 @@ panel = [(0.1691, 0.6810, 0.6465, 0.2258),
 
 # Contour levels
 levels = None
+levels = [0., 0.005, 0.01, 0.02,0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16,0.18,0.2,0.24,0.28,0.3,0.35]
 norm = None
 
 
@@ -71,27 +72,54 @@ fig = plt.figure(figsize=figsize, dpi=dpi)
 ax = fig.add_axes(panel[0], projection=proj)
 ax.set_global()
 #cmap = get_colormap(cmap, parameters)
-p1 = ax.contourf(lon, lat, wind,
+p0 = ax.contourf(lon, lat, wind,
                  transform=ccrs.PlateCarree(),
                  norm=norm,
                  levels=levels,
 #                 cmap=cmap,
+                 cmap='RdBu_r',
+                 extend='both',
+                 )
+
+
+#ax.quiver(x,y,u,v)
+ax.quiver(x[skip],y[skip],u[skip],v[skip],width = 0.002, scale = 8, angles = 'xy')#, scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
+ax.set_aspect('auto')
+ax.coastlines(lw=0.3)
+# Color bar
+cbax = fig.add_axes(
+    (panel[0][0] + 0.6635, panel[0][1] + 0.0215, 0.0326, 0.1792))
+cbar = fig.colorbar(p0, cax=cbax)
+#w, h = get_ax_size(fig, cbax)
+#plt.savefig('test_vector.png')
+
+# Contour plot
+ax1 = fig.add_axes(panel[1], projection=proj)
+ax1.set_global()
+#cmap = get_colormap(cmap, parameters)
+p1 = ax1.contourf(lon, lat, wind,
+                 transform=ccrs.PlateCarree(),
+                 norm=norm,
+                 levels=levels,
+#                 cmap=cmap,
+                 cmap='RdBu_r',
                  extend='both',
                  )
 
 x  , y = np.meshgrid(lon,lat)
-print x.shape
-print y.shape
-print u.shape
-print v.shape
 skip=(slice(None,None,6),slice(None,None,6))
 
 #ax.quiver(x,y,u,v)
-ax.quiver(x[skip],y[skip],u_norm[skip],v_norm[skip],scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
-ax.set_aspect('auto')
-ax.coastlines(lw=0.3)
-plt.savefig('test_vector.png')
-
+ax1.quiver(x[skip],y[skip],u_norm[skip],v_norm[skip])#,width = 0.002, scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
+ax1.set_aspect('auto')
+ax1.coastlines(lw=0.3)
+# Color bar
+cbax = fig.add_axes(
+    (panel[1][0] + 0.6635, panel[1][1] + 0.0215, 0.0326, 0.1792))
+cbar = fig.colorbar(p1, cax=cbax)
+#w, h = get_ax_size(fig, cbax)
+plt.show()
+plt.savefig('test_vector1.png')
 quit()
 
 
