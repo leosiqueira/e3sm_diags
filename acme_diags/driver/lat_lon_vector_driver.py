@@ -11,27 +11,17 @@ from acme_diags.metrics import rmse, corr, min_cdms, max_cdms, mean, std
 from acme_diags.driver import utils
 import collections
 
-Results_Container = collections.namedtuple('Results_Container', ['refs', 'tests', 'metrics'])
+Results_Container = collections.namedtuple('Results_Container', ['refs', 'tests', 'diff', 'metrics'])
 
 
-def create_metrics(ref, test, ref_regrid, test_regrid, diff):
+def create_metrics(ref_regrid, test_regrid, diff):
     """Creates the mean, max, min, rmse, corr in a dictionary"""
     metrics_dict = {}
-    metrics_dict['ref'] = {
-        'min': float(min_cdms(ref)),
-        'max': float(max_cdms(ref)),
-        'mean': float(mean(ref))
-    }
     metrics_dict['ref_regrid'] = {
         'min': float(min_cdms(ref_regrid)),
         'max': float(max_cdms(ref_regrid)),
         'mean': float(mean(ref_regrid)),
         'std': float(std(ref_regrid))
-    }
-    metrics_dict['test'] = {
-        'min': float(min_cdms(test)),
-        'max': float(max_cdms(test)),
-        'mean': float(mean(test))
     }
     metrics_dict['test_regrid'] = {
         'min': float(min_cdms(test_regrid)),
@@ -189,6 +179,29 @@ def run_diag(parameter):
                 raise RuntimeError(
                     "Dimensions of the two variables are different. Aborting.")
 
-        result = Results_Container(tests=tests, refs=refs, metrics = None)
+        test = (tests[0] **2.0 + tests[1]**2.0)**0.5
+        ref = (refs[0] **2.0 + refs[1]**2.0)**0.5
+        diff = test - ref
+        metrics_dict = create_metrics(ref, test, diff)
+        tests.append(test)
+        refs.append(ref)
+        #result = Results_Container(tests=tests, refs=refs, diff=diff, metrics = metrics_dict)
 
+        # Saving the metrics as a json.
+        metrics_dict['unit'] = tests[0].units
+        fnm = os.path.join(utils.general.get_output_dir(
+            parameter.current_set, parameter), parameter.output_file + '.json')
+        with open(fnm, 'w') as outfile:
+                json.dump(metrics_dict, outfile)
+        # Get the filename that the user has passed in and display that.
+        # When running in a container, the paths are modified.
+        fnm = os.path.join(utils.general.get_output_dir(parameter.current_set,
+            parameter, ignore_container=True), parameter.output_file + '.json')
+        print('Metrics saved in: ' + fnm)
+
+        parameter.var_region = region
+        plot(parameter.current_set, tests,
+             refs, diff, metrics_dict, parameter)
+        utils.general.save_ncfiles(parameter.current_set,
+                          test, ref, diff, parameter)
     return parameter
