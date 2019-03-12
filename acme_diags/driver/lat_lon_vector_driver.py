@@ -181,10 +181,14 @@ def run_diag(parameter):
 
         test = (tests[0] **2.0 + tests[1]**2.0)**0.5
         ref = (refs[0] **2.0 + refs[1]**2.0)**0.5
+        diffs = []
         diff = test - ref
         metrics_dict = create_metrics(ref, test, diff)
         tests.append(test)
         refs.append(ref)
+        diffs.append(refs[0] - tests[0])
+        diffs.append(refs[1] - tests[1])
+        diffs.append(diff)
         #result = Results_Container(tests=tests, refs=refs, diff=diff, metrics = metrics_dict)
 
         # Saving the metrics as a json.
@@ -201,7 +205,7 @@ def run_diag(parameter):
 
         parameter.var_region = region
         plot(parameter.current_set, tests,
-             refs, diff, metrics_dict, parameter)
+             refs, diffs, metrics_dict, parameter)
         utils.general.save_ncfiles(parameter.current_set,
                           test, ref, diff, parameter)
     return parameter

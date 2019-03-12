@@ -1,127 +1,16 @@
-import cdms2
-import cdutil
-from acme_diags.driver import utils
-import matplotlib
-matplotlib.use('agg')
-import matplotlib.pyplot as plt
-import numpy as np
-from acme_diags.derivations.default_regions import regions_specs
+from __future__ import print_function
 
+import os
+import numpy as np
 import numpy.ma as ma
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import cartopy.crs as ccrs
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from acme_diags.driver.utils.general import get_output_dir
 from acme_diags.plot import get_colormap
-
-#test_data_path = '/p/cscratch/acme/data/test_model_data_for_acme_diags/climatology/'
-#file1 = test_data_path + '20161118.beta0.FC5COSP.ne30_ne30.edison_ANN_climo.nc'
-test_data_path = '/export/zhang40/test_data/'
-file1 = test_data_path + '20170926.FCT2.A_WCYCL1850S.ne30_oECv3.anvil_ANN_000101_003012_climo.nc'
-test_data_path = '/Users/zhang40/Documents/ACME_simulations/'
-file1 = test_data_path + '20160520.A_WCYCL1850.ne30_oEC.edison.alpha6_01_ANN_climo.nc' 
-#reference_data_path = '/p/cscratch/acme/data/obs_for_e3sm_diags/climatology/ERA-Interim/'
-#file2 = reference_data_path + 'ERA-Interim_ANN_197901_201612_climo.nc' 
-
-fin1 = cdms2.open(file1)
-
-#fin2 = cdms2.open(file2)
-
-x1 = fin1('TAUX')
-y1 = fin1('TAUY')
-#y1 = fin1('TAUY')
-#
-#x2 = fin2('tauu')
-#y2 = fin2('tauv')
-
-
-#var = add_cyclic(var)
-lon = x1.getLongitude()
-lat = x1.getLatitude()
-#convert surface stress to wind stress
-u = -ma.squeeze(x1.asma())
-v = -ma.squeeze(y1.asma())
-wind = (u**2+v**2)**0.5
-u_norm = u/wind
-v_norm = v/wind
-x  , y = np.meshgrid(lon,lat)
-skip=(slice(None,None,6),slice(None,None,6))
-
-
-
-proj = ccrs.PlateCarree(central_longitude=180)
-
-# Position and sizes of subplot axes in page coordinates (0 to 1)
-panel = [(0.1691, 0.6810, 0.6465, 0.2258),
-         (0.1691, 0.3961, 0.6465, 0.2258),
-         (0.1691, 0.1112, 0.6465, 0.2258),
-         ]
-
-
-# Contour levels
-levels = None
-levels = [0., 0.005, 0.01, 0.02,0.03, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16,0.18,0.2,0.24,0.28,0.3,0.35]
-norm = None
-
-
-#figsize = [8.5, 11.0]
-figsize = [17, 22.0]
-dpi = 150
-fig = plt.figure(figsize=figsize, dpi=dpi)
-
-# Contour plot
-ax = fig.add_axes(panel[0], projection=proj)
-ax.set_global()
-#cmap = get_colormap(cmap, parameters)
-p0 = ax.contourf(lon, lat, wind,
-                 transform=ccrs.PlateCarree(),
-                 norm=norm,
-                 levels=levels,
-#                 cmap=cmap,
-                 cmap='RdBu_r',
-                 extend='both',
-                 )
-
-
-#ax.quiver(x,y,u,v)
-ax.quiver(x[skip],y[skip],u[skip],v[skip],width = 0.002, scale = 8, angles = 'xy')#, scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
-ax.set_aspect('auto')
-ax.coastlines(lw=0.3)
-# Color bar
-cbax = fig.add_axes(
-    (panel[0][0] + 0.6635, panel[0][1] + 0.0215, 0.0326, 0.1792))
-cbar = fig.colorbar(p0, cax=cbax)
-#w, h = get_ax_size(fig, cbax)
-#plt.savefig('test_vector.png')
-
-# Contour plot
-ax1 = fig.add_axes(panel[1], projection=proj)
-ax1.set_global()
-#cmap = get_colormap(cmap, parameters)
-p1 = ax1.contourf(lon, lat, wind,
-                 transform=ccrs.PlateCarree(),
-                 norm=norm,
-                 levels=levels,
-#                 cmap=cmap,
-                 cmap='RdBu_r',
-                 extend='both',
-                 )
-
-x  , y = np.meshgrid(lon,lat)
-skip=(slice(None,None,6),slice(None,None,6))
-
-#ax.quiver(x,y,u,v)
-ax1.quiver(x[skip],y[skip],u_norm[skip],v_norm[skip])#,width = 0.002, scale = 50)#,color='black', headwidth=1, scale = 100, headlength=2)
-ax1.set_aspect('auto')
-ax1.coastlines(lw=0.3)
-# Color bar
-cbax = fig.add_axes(
-    (panel[1][0] + 0.6635, panel[1][1] + 0.0215, 0.0326, 0.1792))
-cbar = fig.colorbar(p1, cax=cbax)
-#w, h = get_ax_size(fig, cbax)
-plt.show()
-plt.savefig('test_vector1.png')
-quit()
-
 
 plotTitle = {'fontsize': 11.5}
 plotSideTitle = {'fontsize': 9.5}
@@ -150,13 +39,19 @@ def get_ax_size(fig, ax):
     return width, height
 
 
-def plot_panel(n, fig, proj, var, clevels, cmap,
+def plot_panel(n, fig, proj, vars, clevels, cmap,
                title, parameters, stats=None):
 
+    var = vars[2]
     var = add_cyclic(var)
     lon = var.getLongitude()
     lat = var.getLatitude()
     var = ma.squeeze(var.asma())
+    var_x = add_cyclic(-vars[0])#/var
+    var_y = add_cyclic(-vars[1])#/var
+    x  , y = np.meshgrid(lon,lat)
+    skip=(slice(None,None,6),slice(None,None,6))
+   
 
     # Contour levels
     levels = None
@@ -179,6 +74,10 @@ def plot_panel(n, fig, proj, var, clevels, cmap,
     
     ax.set_aspect('auto')
     ax.coastlines(lw=0.3)
+    
+    # Normalized vector fields
+    ax.quiver(x[skip],y[skip],var_x[skip],var_y[skip])
+
     if title[0] is not None:
         ax.set_title(title[0], loc='left', fontdict=plotSideTitle)
     if title[1] is not None:
@@ -243,18 +142,18 @@ def plot(reference, test, diff, metrics_dict, parameter):
     proj = ccrs.PlateCarree(central_longitude=180)
 
     # First two panels
-    min1 = metrics_dict['test']['min']
-    mean1 = metrics_dict['test']['mean']
-    max1 = metrics_dict['test']['max']
+    min1 = metrics_dict['test_regrid']['min']
+    mean1 = metrics_dict['test_regrid']['mean']
+    max1 = metrics_dict['test_regrid']['max']
 
     plot_panel(0, fig, proj, test, parameter.contour_levels, parameter.test_colormap,
-               (parameter.test_name_yrs, parameter.test_title, test.units), parameter, stats=(max1, mean1, min1))
+               (parameter.test_name_yrs, parameter.test_title, test[0].units), parameter, stats=(max1, mean1, min1))
 
-    min2 = metrics_dict['ref']['min']
-    mean2 = metrics_dict['ref']['mean']
-    max2 = metrics_dict['ref']['max']
+    min2 = metrics_dict['ref_regrid']['min']
+    mean2 = metrics_dict['ref_regrid']['mean']
+    max2 = metrics_dict['ref_regrid']['max']
     plot_panel(1, fig, proj, reference, parameter.contour_levels, parameter.reference_colormap,
-               (parameter.ref_name_yrs, parameter.reference_title, reference.units), parameter, stats=(max2, mean2, min2))
+               (parameter.ref_name_yrs, parameter.reference_title, reference[0].units), parameter, stats=(max2, mean2, min2))
 
     # Third panel
     min3 = metrics_dict['diff']['min']
@@ -305,7 +204,3 @@ def plot(reference, test, diff, metrics_dict, parameter):
             i += 1
 
     plt.close()
-
-
-
-
