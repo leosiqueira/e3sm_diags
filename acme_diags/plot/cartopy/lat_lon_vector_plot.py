@@ -49,6 +49,8 @@ def plot_panel(n, fig, proj, vars, clevels, cmap,
     var = ma.squeeze(var.asma())
     var_x = add_cyclic(-vars[0])#/var
     var_y = add_cyclic(-vars[1])#/var
+    var_x = ma.squeeze(var_x.asma())
+    var_y = ma.squeeze(var_y.asma())
     x  , y = np.meshgrid(lon,lat)
     skip=(slice(None,None,6),slice(None,None,6))
    
@@ -76,7 +78,7 @@ def plot_panel(n, fig, proj, vars, clevels, cmap,
     ax.coastlines(lw=0.3)
     
     # Normalized vector fields
-    ax.quiver(x[skip],y[skip],var_x[skip],var_y[skip])
+    ax.quiver(x[skip],y[skip],var_x[skip],var_y[skip],transform=ccrs.PlateCarree())
 
     if title[0] is not None:
         ax.set_title(title[0], loc='left', fontdict=plotSideTitle)

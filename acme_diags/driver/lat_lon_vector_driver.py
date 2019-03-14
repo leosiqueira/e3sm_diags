@@ -142,7 +142,8 @@ def run_diag(parameter):
 
                     parameter.output_file = '-'.join(
                         [ref_name, var, season, region])
-                    parameter.main_title = str(' '.join([var, season, region]))
+                    #parameter.main_title = str(' '.join([var, season, region]))
+                    parameter.main_title = str(' '.join(['TAU', season, region]))
 
                     # Regrid towards the lower resolution of the two
                     # variables for calculating the difference.
