@@ -98,9 +98,16 @@ def run_diag(parameter):
 
                         parameter.output_file = '-'.join(
                             [ref_name, var, str(int(plev[ilev])), season, region])
-                        parameter.main_title = str(
-                            ' '.join([var, str(int(plev[ilev])), 'mb', season, region]))
+                        #parameter.main_title = str(
+                        #    ' '.join([var, str(int(plev[ilev])), 'mb', season, region]))
 
+                        if var.find('TAU') == 0:
+                            parameter.main_title = str(' '.join(['TAU', str(int(plev[ilev])), 'mb', season, region]))
+                        elif var.find('U') ==0 or var.find('V') ==0:
+                            parameter.main_title = str(' '.join(['Wind', str(int(plev[ilev])), 'mb', season, region]))
+                        else:
+                            parameter.main_title = str(' '.join([var, str(int(plev[ilev])), 'mb', season, region]))
+    
                         # Regrid towards the lower resolution of the two
                         # variables for calculating the difference.
                         mv1_reg, mv2_reg = utils.general.regrid_to_lower_res(
@@ -133,7 +140,7 @@ def run_diag(parameter):
 
 
             # For variables without a z-axis.
-            elif mv1.getLevel() is None and mv2.getLevel() is None:
+            else:
                 for region in regions:
                     print("Selected region: {}".format(region))
 
@@ -143,7 +150,13 @@ def run_diag(parameter):
                     parameter.output_file = '-'.join(
                         [ref_name, var, season, region])
                     #parameter.main_title = str(' '.join([var, season, region]))
-                    parameter.main_title = str(' '.join(['TAU', season, region]))
+                    if var.find('TAU') == 0:
+                        parameter.main_title = str(' '.join(['TAU', season, region]))
+                    elif var.find('U') == 0 or var.find('V') == 0:
+                        parameter.main_title = str(' '.join(['Near surface wind', season, region]))
+                    else:
+                        parameter.main_title = str(' '.join([var, season, region]))
+  
 
                     # Regrid towards the lower resolution of the two
                     # variables for calculating the difference.
@@ -176,9 +189,9 @@ def run_diag(parameter):
                     #utils.general.save_ncfiles(parameter.current_set,
                     #                  mv1_domain, mv2_domain, diff, parameter)
 
-            else:
-                raise RuntimeError(
-                    "Dimensions of the two variables are different. Aborting.")
+            #else:
+            #    raise RuntimeError(
+            #        "Dimensions of the two variables are different. Aborting.")
 
         test = (tests[0] **2.0 + tests[1]**2.0)**0.5
         ref = (refs[0] **2.0 + refs[1]**2.0)**0.5
@@ -209,4 +222,5 @@ def run_diag(parameter):
              refs, diffs, metrics_dict, parameter)
         utils.general.save_ncfiles(parameter.current_set,
                           test, ref, diff, parameter)
+     
     return parameter

@@ -413,6 +413,18 @@ def cosp_histogram_standardize(cld):
 
     return cld_hist
 
+def u_srf(var):
+    """take the first model level wind, as an approximate for near surface wind"""
+    nlevels = var.getLevel()[:].size
+    if var.getLevel()[0] > var.getLevel()[-1]:
+        u_srf = var(level = slice(0,1))
+    else: 
+        u_srf = var(level = slice(nlevels-1,nlevels))
+    return u_srf
+      
+        
+    
+    
 
 # derived_variables is a dictionary to accomodate user specified derived variables.
 # The driver search for available variable keys and functions to calculate derived variable.
@@ -599,6 +611,14 @@ derived_variables = {
     'V': OrderedDict([
         (('va',), rename),
         (('V',), lambda u: convert_units(u, target_units="m/s"))
+    ]),
+    'U_srf': OrderedDict([
+        (('uas',), rename),
+        (('U',), lambda u: u_srf(convert_units(u, target_units="m/s")))
+    ]),
+    'V_srf': OrderedDict([
+        (('vas',), rename),
+        (('V',), lambda u: u_srf(convert_units(u, target_units="m/s")))
     ]),
     'TREFHT': OrderedDict([
         (('TREFHT',), lambda t: convert_units(t, target_units="DegC")),

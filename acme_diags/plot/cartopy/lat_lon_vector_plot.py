@@ -52,7 +52,7 @@ def plot_panel(n, fig, proj, vars, clevels, cmap,
     var_x = ma.squeeze(var_x.asma())
     var_y = ma.squeeze(var_y.asma())
     x  , y = np.meshgrid(lon,lat)
-    skip=(slice(None,None,6),slice(None,None,6))
+    #skip=(slice(None,None,2),slice(None,None,2))
    
 
     # Contour levels
@@ -78,7 +78,8 @@ def plot_panel(n, fig, proj, vars, clevels, cmap,
     ax.coastlines(lw=0.3)
     
     # Normalized vector fields
-    ax.quiver(x[skip],y[skip],var_x[skip],var_y[skip],transform=ccrs.PlateCarree())
+    #ax.quiver(x[skip],y[skip],var_x[skip],var_y[skip],transform=ccrs.PlateCarree())
+    ax.quiver(x[::5,::5],y[::5,::5],var_x[::5,::5],var_y[::5,::5],transform=ccrs.PlateCarree())
 
     if title[0] is not None:
         ax.set_title(title[0], loc='left', fontdict=plotSideTitle)
