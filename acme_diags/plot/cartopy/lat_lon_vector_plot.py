@@ -47,8 +47,8 @@ def plot_panel(n, fig, proj, vars, clevels, cmap,
     lon = var.getLongitude()
     lat = var.getLatitude()
     var = ma.squeeze(var.asma())
-    var_x = add_cyclic(-vars[0])#/var
-    var_y = add_cyclic(-vars[1])#/var
+    var_x = add_cyclic(vars[0])#/var
+    var_y = add_cyclic(vars[1])#/var
     var_x = ma.squeeze(var_x.asma())
     var_y = ma.squeeze(var_y.asma())
     x  , y = np.meshgrid(lon,lat)
